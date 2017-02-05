@@ -1,6 +1,6 @@
 # meica_tool
 
-I've created a handy matlab script that works with meica.py (link will go here) v3 - from the experimental branch. 
+I've created a handy matlab script that works with meica.py (https://bitbucket.org/prantikk/me-ica) v3 - from the experimental branch. 
 It creates a series of figures that are useful for visualizing the output in a quick manner. 
 
 First, it plots the estimated motion parameters, and framewise displacement (bramila tools used here). 
