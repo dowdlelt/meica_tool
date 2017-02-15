@@ -21,6 +21,8 @@ while ischar(tline)
         mid_list = tline;
     elseif strfind(tline, '#IGN')
         ign_list = tline;
+    elseif strfind(tline, '(VEx)');
+        total_var = tline;
     end
     tline = fgetl(fid);
 end
@@ -30,6 +32,7 @@ accp_list = accp_list(6:end);
 rej_list = rej_list(6:end);
 mid_list = mid_list(6:end);
 ign_list = ign_list(6:end);
+total_var = total_var(43:end);
 
 accp_list = accp_list(1:(find(accp_list=='#')-1));
 rej_list = rej_list(1:(find(rej_list=='#')-1));
@@ -123,7 +126,7 @@ savedir = spm_select(1,'dir','Select the MEICA output folder...');
 cd(savedir);
 
 %%Making the motion plots, including framewise displacement
-cfg.motionparam = 'motion.1D';
+cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
 cfg.prepro_suite = 'meica';
 cfg.radius = 50;
 
@@ -133,7 +136,7 @@ grid on; grid minor;
 
 x_axis = size(fwd,1); %Get the number of timepoints
 
-raw_motion = load(cfg.motionparam); %get the SPM regressors
+raw_motion = load(cfg.motionparam); %Load up motion for plotting.
 
 %Subplots are used here to keep everything on the same screen.
 % The y axes for the 6 motion estimates are set from the min and max of
@@ -142,11 +145,13 @@ raw_motion = load(cfg.motionparam); %get the SPM regressors
 % The purpose is two fold, anything larger than that is worrisome and
 % This makes it easy to jump through all the subjects and compare
 % quickly.
-subplot(3,1,1); plot(raw_motion(:,1:3)); axis([0 x_axis min(min(raw_motion(:,1:3))) max(max(raw_motion(:,1:3)))]);
+subplot(3,1,1); plot(raw_motion(:,4:6)); axis([0 x_axis min(min(raw_motion(:,4:6))) max(max(raw_motion(:,4:6)))]);
 title('translation'); grid on;
-rots = (raw_motion(:,4:6)); %To convert radians to degrees.
+
+rots = (raw_motion(:,1:3)); %These are already in degrees
 subplot(3,1,2); plot(rots); axis([0 x_axis min(min(rots)) max(max(rots))]);
 title('rotation'); grid on;
+
 subplot(3,1,3); plot(fwd); title('Framewise Displacement'); axis([0 x_axis 0 3]);
 grid on;
 
@@ -200,19 +205,24 @@ REJ_var = 0;
 MID_var = 0;
 IGN_var = 0;
 
-for i = 1:size(accps,2)
+numBOLD = size(accps,2);
+numREJs = size(rejs,2);
+numMIDS = size(mids,2);
+numIGNS = size(igns,2);
+
+for i = 1:numBOLD
     BOLD_var = BOLD_var+ imported_ctab(accps(i)+1,5);
 end
 
-for i = 1:size(rejs,2)
+for i = 1:numREJs
     REJ_var = REJ_var+ imported_ctab(rejs(i)+1,5);
 end
 
-for i = 1:size(mids,2)
+for i = 1:numMIDS
     MID_var = MID_var+ imported_ctab((mids(i)+1),5);
 end
 
-for i = 1:size(igns,2)
+for i = 1:numIGNS
     IGN_var = IGN_var + imported_ctab(igns(i)+1,5);
 end
 
@@ -223,11 +233,17 @@ hold on
 bar(2, y(2),  'facecolor', 'r');
 bar(3, y(3),  'facecolor', 'm');
 bar(4, y(4),  'facecolor', 'k');
-labels = {'BOLD','non-BOLD','R2* Weighted','Ignored'};
+
+boldLabel = strcat(num2str(numBOLD), ', BOLD');
+noboldLabel = strcat(num2str(numREJs), ', non-BOLD');
+r2Label = strcat(num2str(numMIDS), ', R2* Weighted');
+ignLabel = strcat(num2str(numIGNS), ', Ignored');
+
+labels = {boldLabel,noboldLabel,r2Label,ignLabel};
 set(gca, 'XTick', 1:4, 'XTickLabel', labels);
 
 %total_var = sum(y);
-title('Total variance explained in each category');
+title(strcat('Percent of variance explained by each categroy of total: ', total_var, ' Variance Explained'));
 ylabel('Variance Explained, %');
 
 print([savedir, 'Var_exp'], '-dpng');
