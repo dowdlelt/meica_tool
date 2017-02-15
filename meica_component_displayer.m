@@ -243,6 +243,7 @@ labels = {boldLabel,noboldLabel,r2Label,ignLabel};
 set(gca, 'XTick', 1:4, 'XTickLabel', labels);
 
 %total_var = sum(y);
+title(['% Exp. Var. of total ', total_var, ' PCA Variance ']);
 ylabel('Variance Explained, %');
 
 print([savedir, 'Var_exp'], '-dpng');
