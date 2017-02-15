@@ -243,7 +243,6 @@ labels = {boldLabel,noboldLabel,r2Label,ignLabel};
 set(gca, 'XTick', 1:4, 'XTickLabel', labels);
 
 %total_var = sum(y);
-title(strcat('Percent of variance explained by each categroy of total: ', total_var, ' Variance Explained'));
 ylabel('Variance Explained, %');
 
 print([savedir, 'Var_exp'], '-dpng');
