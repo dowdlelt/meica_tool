@@ -25,3 +25,8 @@ Its (still) ugly code, but effective...for now. Current dependencies include:
 * [load_nii, from Nifit Tools](https://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
 
 But these limited functions will eventually be packaged together and included. 
+
+Example Figures
+![Kappa vs Rho plot](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/Elbow_Graph_KappaVsRho.png?raw=true)
+![Kappa vs Rho Scatter](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/KappaVsRho.png?raw=true)
+![Timeseries and brains](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/ex_component_graph.png?raw=true)
