@@ -164,13 +164,6 @@ title('rotation'); grid on;
 subplot(3,1,3); plot(fwd); title('Framewise Displacement'); axis([0 x_axis 0 3]);
 grid on;
 
-%Thought crosses my mind that I could then use this to create extra
-%motion regressor things.
-
-
-
-
-
 mkdir('component_plots');
 savedir = [savedir, '/component_plots/'];
 
@@ -330,10 +323,132 @@ xlabel('Kappa');
 
 print([savedir, 'KappaVsRho'], '-dpng');
 
+%%Lets make some tSNR figures as well, because why not. 
+% At the moment there will be no filtering on these (highpass, etc)
+% This could have ramifications for intepreting the data, but at the
+% moment, this seems reasonable. 
+
+cd(ted_dir);
+
+tsoc_data = load_nii('ts_OC.nii');
+tsoc_data = tsoc_data.img;
+mean_tsoc = squeeze(mean(tsoc_data,4));
+std_tsoc = squeeze(std(tsoc_data,0,4));
+tsnr_tsoc = mean_tsoc./std_tsoc;
+
+sag_img = [];
+    for j = 1:sag_cuts:sag_slices
+    sag_img = horzcat(sag_img, rot90(squeeze(tsnr_tsoc(j,:,:))));
+    end
+    
+    cor_img = [];
+    for j = 1:cor_cuts:cor_slices
+    cor_img = horzcat(cor_img, rot90(squeeze(tsnr_tsoc(:,j,:))));
+    end
+    
+    hor_img = [];
+    for j = 1:hor_cuts:hor_slices
+    hor_img = horzcat(hor_img, rot90(squeeze(tsnr_tsoc(:,:,j))));
+    end
+
+tsnr_range = max(max(max(tsnr_tsoc)))*.5;
+
+figure; 
+subplot(6,5,1:10)
+imshow(sag_img,[0 tsnr_range])
+colormap parula
+
+subplot(6,5,11:20)
+imshow(cor_img,[0 tsnr_range])
+colormap parula
+
+subplot(6,5,21:30)
+imshow(hor_img,[0 tsnr_range])
+colormap parula
+
+h = colorbar; 
+set(h, 'Position', [.07 .1 .03 .8150])
+
+print([savedir, 'tsoc_tsnr'], '-dpng');
+
+%Now for the Denoised Timeseries
+medn_data = load_nii('dn_ts_OC.nii');
+medn_data = medn_data.img;
+mean_medn = squeeze(mean(medn_data,4));
+std_medn = squeeze(std(medn_data,0,4));
+tsnr_medn = mean_medn./std_medn;
+
+sag_img = [];
+    for j = 1:sag_cuts:sag_slices
+    sag_img = horzcat(sag_img, rot90(squeeze(tsnr_medn(j,:,:))));
+    end
+    
+    cor_img = [];
+    for j = 1:cor_cuts:cor_slices
+    cor_img = horzcat(cor_img, rot90(squeeze(tsnr_medn(:,j,:))));
+    end
+    
+    hor_img = [];
+    for j = 1:hor_cuts:hor_slices
+    hor_img = horzcat(hor_img, rot90(squeeze(tsnr_medn(:,:,j))));
+    end
+
+tsnr_range = max(max(max(tsnr_medn)))*.5;
+
+figure; 
+subplot(6,5,1:10)
+imshow(sag_img,[0 tsnr_range])
+colormap parula
+
+subplot(6,5,11:20)
+imshow(cor_img,[0 tsnr_range])
+colormap parula
+
+subplot(6,5,21:30)
+imshow(hor_img,[0 tsnr_range])
+colormap parula
+
+h = colorbar; 
+set(h, 'Position', [.07 .1 .03 .8150])
+
+print([savedir, 'medn_tsnr'], '-dpng');
+
+%and one last time for the ratio between the two. 
 
 
+tsnr_ratio = tsnr_medn./tsnr_tsoc;
+sag_img = [];
+    for j = 1:sag_cuts:sag_slices
+    sag_img = horzcat(sag_img, rot90(squeeze(tsnr_ratio(j,:,:))));
+    end
+    
+    cor_img = [];
+    for j = 1:cor_cuts:cor_slices
+    cor_img = horzcat(cor_img, rot90(squeeze(tsnr_ratio(:,j,:))));
+    end
+    
+    hor_img = [];
+    for j = 1:hor_cuts:hor_slices
+    hor_img = horzcat(hor_img, rot90(squeeze(tsnr_ratio(:,:,j))));
+    end
 
+tsnr_range = max(max(max(tsnr_ratio)))*.3;
 
+figure; 
+subplot(6,5,1:10)
+imshow(sag_img,[1 tsnr_range])
+colormap parula
 
+subplot(6,5,11:20)
+imshow(cor_img,[1 tsnr_range])
+colormap parula
 
+subplot(6,5,21:30)
+imshow(hor_img,[1 tsnr_range])
+colormap parula
+
+h = colorbar; 
+set(h, 'Position', [.07 .1 .03 .8150])
+
+print([savedir, 'tsnr_ratio'], '-dpng');
 
