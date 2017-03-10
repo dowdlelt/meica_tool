@@ -125,6 +125,15 @@ clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col nu
 savedir = spm_select(1,'dir','Select the MEICA output folder...');
 cd(savedir);
 
+ted_dir = strcat(savedir, '\TED');
+cd(ted_dir); %Go into the output directory
+
+all_betas = load_nii('betas_OC.nii');
+
+all_betas = all_betas.img;
+
+cd(savedir); %Go back out into the main directory. 
+
 %%Making the motion plots, including framewise displacement
 cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
 cfg.prepro_suite = 'meica';
@@ -175,7 +184,25 @@ timecourses_data = load(timecourses);
 x_axis = size(timecourses_data,1);
 figure;
 
+%This is preparing for the brain slice display steps
+num_betas = size(all_betas,4);
+
+sag_slices = (size(all_betas,1));
+cor_slices = (size(all_betas,2));
+hor_slices = size(all_betas,3);
+
+sag_cuts = floor(sag_slices/10);
+cor_cuts = floor(cor_slices/10);
+hor_cuts = floor(hor_slices/10);
+
+color_table = [];
+
 for i = 1:size(timecourses_data, 2);
+    
+    
+    upper = max(max(max(all_betas(:,:,:,i))));
+    lower = min(min(min(all_betas(:,:,:,i))));
+    bounds = (0.3 * max([abs(upper), abs(lower)]));
     
     kappa = imported_ctab(i,2);
     rho = imported_ctab(i,3);
@@ -183,22 +210,57 @@ for i = 1:size(timecourses_data, 2);
     
     %plot(timecourses_data(:,i));
     %% Prints the graphs so that the outcome can be seen
+    subplot(9,5,1:15)
     if any(accps == (i-1))
         plot(timecourses_data(:,i), 'Color',[0 .5 0]); %Green for BOLD like
+        color_table = vertcat(color_table, [0 1 0]);
     elseif any(rejs == (i-1))
         plot(timecourses_data(:,i), 'r'); %Red for Rejected non BOLD
+         color_table = vertcat(color_table, [1 0 0]);
     elseif any(mids == (i-1))
         plot(timecourses_data(:,i), 'm'); %Magenta for R2* weighted artifacts
+         color_table = vertcat(color_table, [1 0 1]);
     elseif any(igns == (i-1))
         plot(timecourses_data(:,i), 'k'); %Black for Ignored components
+         color_table = vertcat(color_table, [0 0 0]);
     end
     %%
-    axis([0 x_axis min(timecourses_data(:,i)) max(timecourses_data(:,i))]);
     
-    title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
+    axis([0 x_axis min(timecourses_data(:,i)) max(timecourses_data(:,i))]);
+      title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
     label = strcat('Component_', num2str(i), '_on_ctab_', num2str(i-1));
+    
+    sag_img = [];
+    for j = 1:sag_cuts:sag_slices
+    sag_img = horzcat(sag_img, rot90(squeeze(all_betas(j,:,:, i))));
+    end
+    
+    cor_img = [];
+    for j = 1:cor_cuts:cor_slices
+    cor_img = horzcat(cor_img, rot90(squeeze(all_betas(:,j,:, i))));
+    end
+    
+    hor_img = [];
+    for j = 1:hor_cuts:hor_slices
+    hor_img = horzcat(hor_img, rot90(squeeze(all_betas(:,:,j, i))));
+    end
+    
+    subplot(9,5,16:25)
+    imshow(sag_img,[-bounds bounds])
+    colormap bone
+    
+    subplot(9,5,26:35)
+    imshow(cor_img,[-bounds bounds])
+    colormap bone
+    
+    subplot(9,5,36:45)
+    imshow(hor_img,[-bounds bounds])
+    colormap bone
+    
     print([savedir, label], '-dpng');
 end
+
+figure; 
 
 BOLD_var = 0;
 REJ_var = 0;
@@ -247,6 +309,28 @@ title(['% Exp. Var. of total ', total_var, ' PCA Variance ']);
 ylabel('Variance Explained, %');
 
 print([savedir, 'Var_exp'], '-dpng');
+
+figure; 
+plot(imported_ctab(:,2))
+hold on
+plot(imported_ctab(:,3))
+legend('kappa', 'rho');
+title(['Elbow, Kappa sorted vs Rho']);
+ylabel('Value');
+xlabel('Component Number');
+
+print([savedir, 'Elbow_Graph_KappaVsRho'], '-dpng');
+
+k_r = horzcat(imported_ctab(:,2),imported_ctab(:,3));
+figure; 
+scatter(k_r(:,1),k_r(:,2), imported_ctab(:,4)*100, color_table);
+title(['Kappa vs Rho']);
+ylabel('Rho');
+xlabel('Kappa');
+
+print([savedir, 'KappaVsRho'], '-dpng');
+
+
 
 
 
