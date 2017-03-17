@@ -4,15 +4,24 @@ function meica_component_displayer()
 ctab = spm_select(Inf, '.*ctab.txt', 'Select ctab file');
 ctab_loc = strfind(ctab,'ctab.txt');
 
+savedir = spm_select(1,'dir','Select the MEICA output folder...');
+
 ctab_loc =ctab_loc -1;
 timecourses = strcat(ctab(1:ctab_loc),'mmix.1D');
-
 
 fid = fopen(ctab);
 tline = fgetl(fid);
 
+imported_ctab = [];
+
 while ischar(tline)
     %disp(tline)
+    num_check = str2num(tline(1)); %Is the first character a number
+    
+    if isempty(num_check) %Want to make sure it is not []
+        num_check = 'not a number'; %not a number ignore it
+    end
+    
     if strfind(tline, '#ACC')
         accp_list = tline;
     elseif strfind(tline, '#REJ')
@@ -23,6 +32,8 @@ while ischar(tline)
         ign_list = tline;
     elseif strfind(tline, '(VEx)');
         total_var = tline;
+    elseif isnumeric(num_check) %if first character is number - its a component
+        imported_ctab = vertcat(imported_ctab, str2num(tline));%Build the component table
     end
     tline = fgetl(fid);
 end
@@ -44,85 +55,9 @@ rejs = str2num(rej_list);
 mids = str2num(mid_list);
 igns = str2num(ign_list);
 
-%Here we will turn these into useful matrices for comparison later.
-
-%% Initialize variables.
-filename = ctab;
-delimiter = '\t';
-startRow = 17;
-
-%% Read columns of data as strings:
-% For more information, see the TEXTSCAN documentation.
-formatSpec = '%s%s%s%s%s%s%[^\n\r]';
-
-%% Open the text file.
-fileID = fopen(filename,'r');
-
-%% Read columns of data according to format string.
-% This call is based on the structure of the file used to generate this
-% code. If an error occurs for a different file, try regenerating the code
-% from the Import Tool.
-dataArray = textscan(fileID, formatSpec, 'Delimiter', delimiter, 'HeaderLines' ,startRow-1, 'ReturnOnError', false);
-
-%% Close the text file.
-fclose(fileID);
-
-%% Convert the contents of columns containing numeric strings to numbers.
-% Replace non-numeric strings with NaN.
-raw = repmat({''},length(dataArray{1}),length(dataArray)-1);
-for col=1:length(dataArray)-1
-    raw(1:length(dataArray{col}),col) = dataArray{col};
-end
-numericData = NaN(size(dataArray{1},1),size(dataArray,2));
-
-for col=[1,2,3,4,5,6]
-    % Converts strings in the input cell array to numbers. Replaced non-numeric
-    % strings with NaN.
-    rawData = dataArray{col};
-    for row=1:size(rawData, 1);
-        % Create a regular expression to detect and remove non-numeric prefixes and
-        % suffixes.
-        regexstr = '(?<prefix>.*?)(?<numbers>([-]*(\d+[\,]*)+[\.]{0,1}\d*[eEdD]{0,1}[-+]*\d*[i]{0,1})|([-]*(\d+[\,]*)*[\.]{1,1}\d+[eEdD]{0,1}[-+]*\d*[i]{0,1}))(?<suffix>.*)';
-        try
-            result = regexp(rawData{row}, regexstr, 'names');
-            numbers = result.numbers;
-            
-            % Detected commas in non-thousand locations.
-            invalidThousandsSeparator = false;
-            if any(numbers==',');
-                thousandsRegExp = '^\d+?(\,\d{3})*\.{0,1}\d*$';
-                if isempty(regexp(thousandsRegExp, ',', 'once'));
-                    numbers = NaN;
-                    invalidThousandsSeparator = true;
-                end
-            end
-            % Convert numeric strings to numbers.
-            if ~invalidThousandsSeparator;
-                numbers = textscan(strrep(numbers, ',', ''), '%f');
-                numericData(row, col) = numbers{1};
-                raw{row, col} = numbers{1};
-            end
-        catch me
-        end
-    end
-end
-
-
-%% Replace non-numeric cells with NaN
-R = cellfun(@(x) ~isnumeric(x) && ~islogical(x),raw); % Find non-numeric cells
-raw(R) = {NaN}; % Replace non-numeric cells
-
-%% Create output variable
-imported_ctab = cell2mat(raw);
-%% Clear temporary variables
-clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R;
-
-%timecourses = spm_select(Inf, '.*.1D', 'Select ctab file');
-
 %For the imported_ctab, the columns are
 %Comp#  Kappa   Rho   Variance   Normed_variance
 
-savedir = spm_select(1,'dir','Select the MEICA output folder...');
 cd(savedir);
 
 ted_dir = strcat(savedir, '\TED');
@@ -172,7 +107,6 @@ savedir = [savedir, '/component_plots/'];
 print([savedir, titl], '-dpng');
 
 timecourses_data = load(timecourses);
-
 
 x_axis = size(timecourses_data,1);
 comp_number = size(timecourses_data,2);
@@ -360,8 +294,6 @@ set(h, 'Position', [.08 .35 .03 .55])
 subplot(8,5,31:40)
 histogram(reshape(tsnr_tsoc, [],1),100);
 
-
-
 print([savedir, 'tsnr_oc'], '-dpng');
 
 base_img.img = tsnr_tsoc;
@@ -393,9 +325,7 @@ h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
-c = histogram(reshape(tsnr_medn, [],1),100);
-
-
+histogram(reshape(tsnr_medn, [],1),100);
 
 print([savedir, 'tsnr_medn'], '-dpng');
 
@@ -411,20 +341,18 @@ tsnr_ratio = tsnr_medn./tsnr_tsoc;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-tsnr_range = max(max(max(tsnr_ratio)))*.3;
-
 figure('visible', 'off', 'windowstyle','normal'); 
 subplot(8,5,1:10)
-imshow(sag_img,[0 tsnr_range])
+imshow(sag_img,[0 5])
 title('TSNR Ratio, MEDN vs TSOC timeseries');
 colormap parula
 
 subplot(8,5,11:20)
-imshow(cor_img,[0 tsnr_range])
+imshow(cor_img,[0 5])
 colormap parula
 
 subplot(8,5,21:30)
-imshow(hor_img,[0 tsnr_range])
+imshow(hor_img,[0 5])
 colormap parula
 
 h = colorbar; 
@@ -435,8 +363,6 @@ c = histogram(reshape(tsnr_ratio, [],1),25);
 
 c.BinLimits = [0 6];
 c.NumBins = 30;
-
-
 
 print([savedir, 'tsnr_ratio_medn_tsoc'], '-dpng');
 
@@ -474,7 +400,7 @@ h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
-c = histogram(reshape(tsnr_e2, [],1),100);
+histogram(reshape(tsnr_e2, [],1),100);
 
 print([savedir, 'tsnr_2nd_echo'], '-dpng');
 
@@ -489,20 +415,18 @@ tsnr_ratio = tsnr_tsoc./tsnr_e2;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-tsnr_range = max(max(max(tsnr_ratio)))*.3;
-
 figure('visible', 'off', 'windowstyle','normal'); 
 subplot(8,5,1:10)
-imshow(sag_img,[0 tsnr_range])
+imshow(sag_img,[0 5])
 title('TSNR of TSOC vs 2nd Echo');
 colormap parula
 
 subplot(8,5,11:20)
-imshow(cor_img,[0 tsnr_range])
+imshow(cor_img,[0 5])
 colormap parula
 
 subplot(8,5,21:30)
-imshow(hor_img,[0 tsnr_range])
+imshow(hor_img,[0 5])
 colormap parula
 
 h = colorbar; 
@@ -512,8 +436,6 @@ subplot(8,5,31:40)
 c= histogram(reshape(tsnr_ratio, [],1),25);
 c.BinLimits = [0 6];
 c.NumBins = 30;
-
-
 
 print([savedir, 'tsnr_ratio_oc_vs_e2'], '-dpng');
 cd ..
@@ -526,20 +448,18 @@ tsnr_ratio = tsnr_medn./tsnr_e2;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-tsnr_range = max(max(max(tsnr_ratio)))*.5;
-
 figure('visible', 'off', 'windowstyle','normal'); 
 subplot(8,5,1:10)
-imshow(sag_img,[0 tsnr_range])
+imshow(sag_img,[0 5])
 title('TSNR of MEDN vs 2nd Echo');
 colormap parula
 
 subplot(8,5,11:20)
-imshow(cor_img,[0 tsnr_range])
+imshow(cor_img,[0 5])
 colormap parula
 
 subplot(8,5,21:30)
-imshow(hor_img,[0 tsnr_range])
+imshow(hor_img,[0 5])
 colormap parula
 
 h = colorbar; 
@@ -556,5 +476,3 @@ base_img.img = tsnr_ratio;
 save_nii(base_img, [savedir, 'tsnr_ratio_medn_vs_e2.nii']);
 
 fprintf('\n');
-
-
