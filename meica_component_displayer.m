@@ -139,7 +139,7 @@ cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw 
 cfg.prepro_suite = 'meica';
 cfg.radius = 50;
 
-figure;
+figure('visible', 'off', 'windowstyle', 'normal');
 grid on; grid minor;
 [fwd,~]=bramila_framewiseDisplacement(cfg); %calculate FD using script
 
@@ -175,23 +175,24 @@ timecourses_data = load(timecourses);
 
 
 x_axis = size(timecourses_data,1);
-figure;
+comp_number = size(timecourses_data,2);
 
-%This is preparing for the brain slice display steps
-num_betas = size(all_betas,4);
+num_cuts = 10; %This is used to creating multi-planar images
 
-sag_slices = (size(all_betas,1));
-cor_slices = (size(all_betas,2));
-hor_slices = size(all_betas,3);
+color_table = zeros(comp_number,3);
 
-sag_cuts = floor(sag_slices/10);
-cor_cuts = floor(cor_slices/10);
-hor_cuts = floor(hor_slices/10);
+fprintf('Making component plots.\n');
+count = 0; %for displaying things every so often
 
-color_table = [];
+figure('visible', 'off', 'windowstyle','normal');
 
-for i = 1:size(timecourses_data, 2);
+
+for i = 1:comp_number;
     
+    if mod(count, 10) == 0
+        fprintf('.'); %print progress every 10 components, less annoying.
+    end
+    count = count +1;
     
     upper = max(max(max(all_betas(:,:,:,i))));
     lower = min(min(min(all_betas(:,:,:,i))));
@@ -204,18 +205,19 @@ for i = 1:size(timecourses_data, 2);
     %plot(timecourses_data(:,i));
     %% Prints the graphs so that the outcome can be seen
     subplot(9,5,1:15)
+    
     if any(accps == (i-1))
         plot(timecourses_data(:,i), 'Color',[0 .5 0]); %Green for BOLD like
-        color_table = vertcat(color_table, [0 1 0]);
+        color_table(i,:) = [0 1 0];
     elseif any(rejs == (i-1))
         plot(timecourses_data(:,i), 'r'); %Red for Rejected non BOLD
-         color_table = vertcat(color_table, [1 0 0]);
+         color_table(i,:) = [1 0 0];
     elseif any(mids == (i-1))
         plot(timecourses_data(:,i), 'm'); %Magenta for R2* weighted artifacts
-         color_table = vertcat(color_table, [1 0 1]);
+         color_table(i,:) = [1 0 1];
     elseif any(igns == (i-1))
         plot(timecourses_data(:,i), 'k'); %Black for Ignored components
-         color_table = vertcat(color_table, [0 0 0]);
+         color_table(i,:) = [0 0 0];
     end
     %%
     
@@ -223,20 +225,9 @@ for i = 1:size(timecourses_data, 2);
       title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
     label = strcat('Component_', num2str(i), '_on_ctab_', num2str(i-1));
     
-    sag_img = [];
-    for j = 1:sag_cuts:sag_slices
-    sag_img = horzcat(sag_img, rot90(squeeze(all_betas(j,:,:, i))));
-    end
+    current_image = squeeze(all_betas(:,:,:,i));
     
-    cor_img = [];
-    for j = 1:cor_cuts:cor_slices
-    cor_img = horzcat(cor_img, rot90(squeeze(all_betas(:,j,:, i))));
-    end
-    
-    hor_img = [];
-    for j = 1:hor_cuts:hor_slices
-    hor_img = horzcat(hor_img, rot90(squeeze(all_betas(:,:,j, i))));
-    end
+    [sag_img, cor_img, hor_img] = three_cut_maker(current_image,num_cuts);
     
     subplot(9,5,16:25)
     imshow(sag_img,[-bounds bounds])
@@ -252,8 +243,10 @@ for i = 1:size(timecourses_data, 2);
     
     print([savedir, label], '-dpng');
 end
+ %%
+fprintf('\nCollecting Explained Variance...');
 
-figure; 
+figure('visible', 'off', 'windowstyle','normal'); 
 
 BOLD_var = 0;
 REJ_var = 0;
@@ -297,158 +290,271 @@ ignLabel = strcat(num2str(numIGNS), ', Ignored');
 labels = {boldLabel,noboldLabel,r2Label,ignLabel};
 set(gca, 'XTick', 1:4, 'XTickLabel', labels);
 
-%total_var = sum(y);
 title(['% Exp. Var. of total ', total_var, ' PCA Variance ']);
 ylabel('Variance Explained, %');
 
 print([savedir, 'Var_exp'], '-dpng');
 
-figure; 
+%%
+fprintf('\nShowing Elbow of Kappa, with Rho...');
+
+figure('visible', 'off', 'windowstyle','normal'); 
 plot(imported_ctab(:,2))
 hold on
 plot(imported_ctab(:,3))
 legend('kappa', 'rho');
-title(['Elbow, Kappa sorted vs Rho']);
+title('Elbow, Kappa sorted vs Rho');
 ylabel('Value');
 xlabel('Component Number');
 
 print([savedir, 'Elbow_Graph_KappaVsRho'], '-dpng');
+%%
+fprintf('\nScattering Kappa vs Rho ');
 
 k_r = horzcat(imported_ctab(:,2),imported_ctab(:,3));
-figure; 
+figure('visible', 'off', 'windowstyle','normal');
 scatter(k_r(:,1),k_r(:,2), imported_ctab(:,4)*100, color_table);
-title(['Kappa vs Rho']);
+title('Kappa vs Rho');
 ylabel('Rho');
 xlabel('Kappa');
 
 print([savedir, 'KappaVsRho'], '-dpng');
 
-%%Lets make some tSNR figures as well, because why not. 
+%%
+%Lets make some tSNR figures as well, because why not. 
 % At the moment there will be no filtering on these (highpass, etc)
 % This could have ramifications for intepreting the data, but at the
 % moment, this seems reasonable. 
 
 cd(ted_dir);
 
-tsoc_data = load_nii('ts_OC.nii');
-tsoc_data = tsoc_data.img;
-mean_tsoc = squeeze(mean(tsoc_data,4));
-std_tsoc = squeeze(std(tsoc_data,0,4));
-tsnr_tsoc = mean_tsoc./std_tsoc;
+base_img = load_nii('t2sv.nii'); 
+%This is a one frame nifti that we can use to make nifti versions
+% of all the TSNR figures. 
 
-sag_img = [];
-    for j = 1:sag_cuts:sag_slices
-    sag_img = horzcat(sag_img, rot90(squeeze(tsnr_tsoc(j,:,:))));
-    end
-    
-    cor_img = [];
-    for j = 1:cor_cuts:cor_slices
-    cor_img = horzcat(cor_img, rot90(squeeze(tsnr_tsoc(:,j,:))));
-    end
-    
-    hor_img = [];
-    for j = 1:hor_cuts:hor_slices
-    hor_img = horzcat(hor_img, rot90(squeeze(tsnr_tsoc(:,:,j))));
-    end
+fprintf('\nCalculating TSNR figures...');
+
+tsnr_tsoc = tsnr_creator('ts_OC.nii');
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_tsoc,num_cuts);
 
 tsnr_range = max(max(max(tsnr_tsoc)))*.5;
 
-figure; 
-subplot(6,5,1:10)
+figure('visible', 'off', 'windowstyle','normal');
+subplot(8,5,1:10)
 imshow(sag_img,[0 tsnr_range])
+title('TSNR of TSOC timeseries');
 colormap parula
 
-subplot(6,5,11:20)
+subplot(8,5,11:20)
 imshow(cor_img,[0 tsnr_range])
 colormap parula
 
-subplot(6,5,21:30)
+subplot(8,5,21:30)
 imshow(hor_img,[0 tsnr_range])
 colormap parula
 
 h = colorbar; 
-set(h, 'Position', [.07 .1 .03 .8150])
+set(h, 'Position', [.08 .35 .03 .55])
 
-print([savedir, 'tsoc_tsnr'], '-dpng');
+subplot(8,5,31:40)
+histogram(reshape(tsnr_tsoc, [],1),100);
 
-%Now for the Denoised Timeseries
-medn_data = load_nii('dn_ts_OC.nii');
-medn_data = medn_data.img;
-mean_medn = squeeze(mean(medn_data,4));
-std_medn = squeeze(std(medn_data,0,4));
-tsnr_medn = mean_medn./std_medn;
 
-sag_img = [];
-    for j = 1:sag_cuts:sag_slices
-    sag_img = horzcat(sag_img, rot90(squeeze(tsnr_medn(j,:,:))));
-    end
-    
-    cor_img = [];
-    for j = 1:cor_cuts:cor_slices
-    cor_img = horzcat(cor_img, rot90(squeeze(tsnr_medn(:,j,:))));
-    end
-    
-    hor_img = [];
-    for j = 1:hor_cuts:hor_slices
-    hor_img = horzcat(hor_img, rot90(squeeze(tsnr_medn(:,:,j))));
-    end
+
+print([savedir, 'tsnr_oc'], '-dpng');
+
+base_img.img = tsnr_tsoc;
+save_nii(base_img, [savedir, 'tsoc_tsnr.nii']);
+
+%%
+%Calculated TSNR denoised Timeseries
+tsnr_medn = tsnr_creator('dn_ts_OC.nii');
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_medn,num_cuts);
 
 tsnr_range = max(max(max(tsnr_medn)))*.5;
 
-figure; 
-subplot(6,5,1:10)
+figure('visible', 'off', 'windowstyle','normal');
+subplot(8,5,1:10)
 imshow(sag_img,[0 tsnr_range])
+title('TSNR of MEDN timeseries');
 colormap parula
 
-subplot(6,5,11:20)
+subplot(8,5,11:20)
 imshow(cor_img,[0 tsnr_range])
 colormap parula
 
-subplot(6,5,21:30)
+subplot(8,5,21:30)
 imshow(hor_img,[0 tsnr_range])
 colormap parula
 
 h = colorbar; 
-set(h, 'Position', [.07 .1 .03 .8150])
+set(h, 'Position', [.08 .35 .03 .55])
 
-print([savedir, 'medn_tsnr'], '-dpng');
+subplot(8,5,31:40)
+c = histogram(reshape(tsnr_medn, [],1),100);
 
-%and one last time for the ratio between the two. 
 
 
+print([savedir, 'tsnr_medn'], '-dpng');
+
+base_img.img = tsnr_medn;
+save_nii(base_img, [savedir, 'medn_tsnr.nii']);
+
+%%
+%Ratio of Denoised vs TSOC TSNR
+%
+
+fprintf('\nCalculating TSNR ratio');
 tsnr_ratio = tsnr_medn./tsnr_tsoc;
-sag_img = [];
-    for j = 1:sag_cuts:sag_slices
-    sag_img = horzcat(sag_img, rot90(squeeze(tsnr_ratio(j,:,:))));
-    end
-    
-    cor_img = [];
-    for j = 1:cor_cuts:cor_slices
-    cor_img = horzcat(cor_img, rot90(squeeze(tsnr_ratio(:,j,:))));
-    end
-    
-    hor_img = [];
-    for j = 1:hor_cuts:hor_slices
-    hor_img = horzcat(hor_img, rot90(squeeze(tsnr_ratio(:,:,j))));
-    end
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
 tsnr_range = max(max(max(tsnr_ratio)))*.3;
 
-figure; 
-subplot(6,5,1:10)
-imshow(sag_img,[1 tsnr_range])
+figure('visible', 'off', 'windowstyle','normal'); 
+subplot(8,5,1:10)
+imshow(sag_img,[0 tsnr_range])
+title('TSNR Ratio, MEDN vs TSOC timeseries');
 colormap parula
 
-subplot(6,5,11:20)
-imshow(cor_img,[1 tsnr_range])
+subplot(8,5,11:20)
+imshow(cor_img,[0 tsnr_range])
 colormap parula
 
-subplot(6,5,21:30)
-imshow(hor_img,[1 tsnr_range])
+subplot(8,5,21:30)
+imshow(hor_img,[0 tsnr_range])
 colormap parula
 
 h = colorbar; 
-set(h, 'Position', [.07 .1 .03 .8150])
+set(h, 'Position', [.08 .35 .03 .55])
 
-print([savedir, 'tsnr_ratio'], '-dpng');
+subplot(8,5,31:40)
+c = histogram(reshape(tsnr_ratio, [],1),25);
+
+c.BinLimits = [0 6];
+c.NumBins = 30;
+
+
+
+print([savedir, 'tsnr_ratio_medn_tsoc'], '-dpng');
+
+base_img.img = tsnr_ratio;
+save_nii(base_img, [savedir, 'tsnr_ratio_medn_tsoc.nii']);
+
+cd ..
+
+%%
+%Calculated TSNR of second echo
+%This is typically around 30
+%So its tSNR is close to what a conventional aquisition would be. 
+
+tsnr_e2 = tsnr_creator('e2_in.nii.gz');
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_e2,num_cuts);
+
+tsnr_range = max(max(max(tsnr_e2)))*.5;
+
+figure('visible', 'off', 'windowstyle','normal');
+subplot(8,5,1:10)
+imshow(sag_img,[0 tsnr_range])
+title('TSNR of Second Echo');
+colormap parula
+
+subplot(8,5,11:20)
+imshow(cor_img,[0 tsnr_range])
+colormap parula
+
+subplot(8,5,21:30)
+imshow(hor_img,[0 tsnr_range])
+colormap parula
+
+h = colorbar; 
+set(h, 'Position', [.08 .35 .03 .55])
+
+subplot(8,5,31:40)
+c = histogram(reshape(tsnr_e2, [],1),100);
+
+print([savedir, 'tsnr_2nd_echo'], '-dpng');
+
+base_img.img = tsnr_e2;
+save_nii(base_img, [savedir, 'e2_tsnr.nii']);
+
+%%
+%TSNR ratio from optimal combo vs single echo
+
+fprintf('\nCalculating TSNR ratio for TSOC vs E2');
+tsnr_ratio = tsnr_tsoc./tsnr_e2;
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
+
+tsnr_range = max(max(max(tsnr_ratio)))*.3;
+
+figure('visible', 'off', 'windowstyle','normal'); 
+subplot(8,5,1:10)
+imshow(sag_img,[0 tsnr_range])
+title('TSNR of TSOC vs 2nd Echo');
+colormap parula
+
+subplot(8,5,11:20)
+imshow(cor_img,[0 tsnr_range])
+colormap parula
+
+subplot(8,5,21:30)
+imshow(hor_img,[0 tsnr_range])
+colormap parula
+
+h = colorbar; 
+set(h, 'Position', [.08 .35 .03 .55])
+
+subplot(8,5,31:40)
+c= histogram(reshape(tsnr_ratio, [],1),25);
+c.BinLimits = [0 6];
+c.NumBins = 30;
+
+
+
+print([savedir, 'tsnr_ratio_oc_vs_e2'], '-dpng');
+cd ..
+
+%%
+%TSNR ratio for denoising vs single echo
+fprintf('\nCalculating TSNR ratio for MEDN vs E2');
+
+tsnr_ratio = tsnr_medn./tsnr_e2;
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
+
+tsnr_range = max(max(max(tsnr_ratio)))*.5;
+
+figure('visible', 'off', 'windowstyle','normal'); 
+subplot(8,5,1:10)
+imshow(sag_img,[0 tsnr_range])
+title('TSNR of MEDN vs 2nd Echo');
+colormap parula
+
+subplot(8,5,11:20)
+imshow(cor_img,[0 tsnr_range])
+colormap parula
+
+subplot(8,5,21:30)
+imshow(hor_img,[0 tsnr_range])
+colormap parula
+
+h = colorbar; 
+set(h, 'Position', [.08 .35 .03 .55])
+
+subplot(8,5,31:40)
+c = histogram(reshape(tsnr_ratio, [],1),25);
+c.BinLimits = [0 6];
+c.NumBins = 30;
+
+print([savedir, 'tsnr_ratio_medn_vs_e2'], '-dpng');
+
+base_img.img = tsnr_ratio;
+save_nii(base_img, [savedir, 'tsnr_ratio_medn_vs_e2.nii']);
+
+fprintf('\n');
+
 
