@@ -15,6 +15,7 @@ Each plot includes brain slices of the component beta values (from TED/betas_OC.
 * kappa vs rho scatter plot, where size is proportaional to variance, colors as above
 * kappa vs rho line plot
 * Bar plot of variance explained
+* tSNR figures, with histograms
 
 It then creates a bar plot showing the relative variance of each of those categories. 
 
@@ -22,13 +23,15 @@ Its (still) ugly code, but effective...for now.
 
 ###Current dependencies include:
 
-* [bramila framewise displacement and detrend](https://git.becs.aalto.fi/bml/bramila/tree/master)
-* [spm, for file loading, for now](http://www.fil.ion.ucl.ac.uk/spm/)
-* [load_nii, from Nifit Tools](https://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
 
-But these limited functions will eventually be packaged together and included. 
+* [spm, for file loading, for now](http://www.fil.ion.ucl.ac.uk/spm/)
+* [load_nii, from Nifti Tools](https://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
+
+But these few functions will eventually be packaged together and included. 
 
 Example Figures
 ![Kappa vs Rho plot](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/Elbow_Graph_KappaVsRho.png?raw=true)
 ![Kappa vs Rho Scatter](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/KappaVsRho.png?raw=true)
 ![Timeseries and brains](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/ex_component_graph.png?raw=true)
+
+Thanks to bramila framewise displacement and detrend code (from https://git.becs.aalto.fi/bml/bramila/tree/master) for dvars calculation 
