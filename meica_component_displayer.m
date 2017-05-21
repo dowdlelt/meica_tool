@@ -1,17 +1,31 @@
 function meica_component_displayer()
-
-%select the text file that has the timecourses of interest
-ctab = spm_select(Inf, '.*ctab.txt', 'Select ctab file');
-ctab_loc = strfind(ctab,'ctab.txt');
-
 savedir = spm_select(1,'dir','Select the MEICA output folder...');
+%This is the MEICA output folder
+%and the figures will be saved in new folder here.
 
-ctab_loc =ctab_loc -1;
-timecourses = strcat(ctab(1:ctab_loc),'mmix.1D');
+cd(savedir);
 
-fid = fopen(ctab);
+%Prepare motion calc and loading.
+cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
+cfg.prepro_suite = 'meica';
+cfg.radius = 50;
+
+raw_motion = load(cfg.motionparam); %Load up motion for plotting.
+
+ted_dir = strcat(savedir, '\TED');
+cd(ted_dir);
+
+%Get the ICA component timecourses.
+timecourses_data = load('meica_mix.1D');
+ctab = 'comp_table.txt';
+
+%Create a combination of motion estimates and ICA comps.
+total_timecourses = horzcat(raw_motion, timecourses_data);
+%Use this to create a correlation matrix
+corr_mat = corr(total_timecourses);
+
+fid = fopen(ctab); %Open the comp table that is within the TED folder.
 tline = fgetl(fid);
-
 imported_ctab = [];
 
 while ischar(tline)
@@ -30,7 +44,7 @@ while ischar(tline)
         mid_list = tline;
     elseif strfind(tline, '#IGN')
         ign_list = tline;
-    elseif strfind(tline, '(VEx)');
+    elseif strfind(tline, '(VEx)')
         total_var = tline;
     elseif isnumeric(num_check) %if first character is number - its a component
         imported_ctab = vertcat(imported_ctab, str2num(tline));%Build the component table
@@ -58,29 +72,21 @@ igns = str2num(ign_list);
 %For the imported_ctab, the columns are
 %Comp#  Kappa   Rho   Variance   Normed_variance
 
-cd(savedir);
-
-ted_dir = strcat(savedir, '\TED');
 cd(ted_dir); %Go into the output directory
 
 all_betas = load_nii('betas_OC.nii');
 
 all_betas = all_betas.img;
 
-cd(savedir); %Go back out into the main directory. 
+cd(savedir); %Go back out into the main directory.
 
 %%Making the motion plots, including framewise displacement
-cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
-cfg.prepro_suite = 'meica';
-cfg.radius = 50;
 
 figure('visible', 'off', 'windowstyle', 'normal');
 grid on; grid minor;
 [fwd,~]=bramila_framewiseDisplacement(cfg); %calculate FD using script
 
 x_axis = size(fwd,1); %Get the number of timepoints
-
-raw_motion = load(cfg.motionparam); %Load up motion for plotting.
 
 %Subplots are used here to keep everything on the same screen.
 % The y axes for the 6 motion estimates are set from the min and max of
@@ -105,8 +111,6 @@ savedir = [savedir, '/component_plots/'];
 %plots are created here.
 [~, titl, ~] = fileparts(cfg.motionparam);
 print([savedir, titl], '-dpng');
-
-timecourses_data = load(timecourses);
 
 x_axis = size(timecourses_data,1);
 comp_number = size(timecourses_data,2);
@@ -145,18 +149,18 @@ for i = 1:comp_number;
         color_table(i,:) = [0 1 0];
     elseif any(rejs == (i-1))
         plot(timecourses_data(:,i), 'r'); %Red for Rejected non BOLD
-         color_table(i,:) = [1 0 0];
+        color_table(i,:) = [1 0 0];
     elseif any(mids == (i-1))
         plot(timecourses_data(:,i), 'm'); %Magenta for R2* weighted artifacts
-         color_table(i,:) = [1 0 1];
+        color_table(i,:) = [1 0 1];
     elseif any(igns == (i-1))
         plot(timecourses_data(:,i), 'k'); %Black for Ignored components
-         color_table(i,:) = [0 0 0];
+        color_table(i,:) = [0 0 0];
     end
     %%
     
     axis([0 x_axis min(timecourses_data(:,i)) max(timecourses_data(:,i))]);
-      title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
+    title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
     label = strcat('Component_', num2str(i), '_on_ctab_', num2str(i-1));
     
     current_image = squeeze(all_betas(:,:,:,i));
@@ -177,10 +181,10 @@ for i = 1:comp_number;
     
     print([savedir, label], '-dpng');
 end
- %%
+%%
 fprintf('\nCollecting Explained Variance...');
 
-figure('visible', 'off', 'windowstyle','normal'); 
+figure('visible', 'off', 'windowstyle','normal');
 
 BOLD_var = 0;
 REJ_var = 0;
@@ -232,7 +236,7 @@ print([savedir, 'Var_exp'], '-dpng');
 %%
 fprintf('\nShowing Elbow of Kappa, with Rho...');
 
-figure('visible', 'off', 'windowstyle','normal'); 
+figure('visible', 'off', 'windowstyle','normal');
 plot(imported_ctab(:,2))
 hold on
 plot(imported_ctab(:,3))
@@ -255,49 +259,18 @@ xlabel('Kappa');
 print([savedir, 'KappaVsRho'], '-dpng');
 
 %%
-%Lets make some tSNR figures as well, because why not. 
+%Lets make some tSNR figures as well, because why not.
 % At the moment there will be no filtering on these (highpass, etc)
 % This could have ramifications for intepreting the data, but at the
-% moment, this seems reasonable. 
+% moment, this seems reasonable.
 
 cd(ted_dir);
 
-base_img = load_nii('t2sv.nii'); 
+base_img = load_nii('t2sv.nii');
 %This is a one frame nifti that we can use to make nifti versions
-% of all the TSNR figures. 
+% of all the TSNR figures.
 
 fprintf('\nCalculating TSNR figures...');
-
-tsnr_tsoc = tsnr_creator('ts_OC.nii');
-
-[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_tsoc,num_cuts);
-
-tsnr_range = max(max(max(tsnr_tsoc)))*.5;
-
-figure('visible', 'off', 'windowstyle','normal');
-subplot(8,5,1:10)
-imshow(sag_img,[0 tsnr_range])
-title('TSNR of TSOC timeseries');
-colormap parula
-
-subplot(8,5,11:20)
-imshow(cor_img,[0 tsnr_range])
-colormap parula
-
-subplot(8,5,21:30)
-imshow(hor_img,[0 tsnr_range])
-colormap parula
-
-h = colorbar; 
-set(h, 'Position', [.08 .35 .03 .55])
-
-subplot(8,5,31:40)
-histogram(reshape(tsnr_tsoc, [],1),100);
-
-print([savedir, 'tsnr_oc'], '-dpng');
-
-base_img.img = tsnr_tsoc;
-save_nii(base_img, [savedir, 'tsoc_tsnr.nii']);
 
 %%
 %Calculated TSNR denoised Timeseries
@@ -305,7 +278,9 @@ tsnr_medn = tsnr_creator('dn_ts_OC.nii');
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_medn,num_cuts);
 
-tsnr_range = max(max(max(tsnr_medn)))*.5;
+tsnr_max_MEDN = max(max(max(tsnr_medn)));
+
+tsnr_range = tsnr_max_MEDN*0.8;
 
 figure('visible', 'off', 'windowstyle','normal');
 subplot(8,5,1:10)
@@ -321,11 +296,12 @@ subplot(8,5,21:30)
 imshow(hor_img,[0 tsnr_range])
 colormap parula
 
-h = colorbar; 
+h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
 histogram(reshape(tsnr_medn, [],1),100);
+xlim([0 tsnr_max_MEDN]);
 
 print([savedir, 'tsnr_medn'], '-dpng');
 
@@ -333,54 +309,46 @@ base_img.img = tsnr_medn;
 save_nii(base_img, [savedir, 'medn_tsnr.nii']);
 
 %%
-%Ratio of Denoised vs TSOC TSNR
-%
+%Calculate TSNR of TSOC
+tsnr_tsoc = tsnr_creator('ts_OC.nii');
 
-fprintf('\nCalculating TSNR ratio');
-tsnr_ratio = tsnr_medn./tsnr_tsoc;
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_tsoc,num_cuts);
 
-[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
-
-figure('visible', 'off', 'windowstyle','normal'); 
+figure('visible', 'off', 'windowstyle','normal');
 subplot(8,5,1:10)
-imshow(sag_img,[0 5])
-title('TSNR Ratio, MEDN vs TSOC timeseries');
+imshow(sag_img,[0 tsnr_range])
+
+title('TSNR of TSOC timeseries');
 colormap parula
 
 subplot(8,5,11:20)
-imshow(cor_img,[0 5])
+imshow(cor_img,[0 tsnr_range])
 colormap parula
 
 subplot(8,5,21:30)
-imshow(hor_img,[0 5])
+imshow(hor_img,[0 tsnr_range])
 colormap parula
 
-h = colorbar; 
+h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
-c = histogram(reshape(tsnr_ratio, [],1),25);
+histogram(reshape(tsnr_tsoc, [],1),100);
+xlim([0 tsnr_max_MEDN]);
 
-c.BinLimits = [0 6];
-c.NumBins = 30;
+print([savedir, 'tsnr_oc'], '-dpng');
 
-print([savedir, 'tsnr_ratio_medn_tsoc'], '-dpng');
-
-base_img.img = tsnr_ratio;
-save_nii(base_img, [savedir, 'tsnr_ratio_medn_tsoc.nii']);
-
-cd ..
-
+base_img.img = tsnr_tsoc;
+save_nii(base_img, [savedir, 'tsoc_tsnr.nii']);
 %%
 %Calculated TSNR of second echo
 %This is typically around 30
-%So its tSNR is close to what a conventional aquisition would be. 
+%So its tSNR is close to what a conventional aquisition would be.
+cd ..
 
 tsnr_e2 = tsnr_creator('e2_in.nii.gz');
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_e2,num_cuts);
-
-tsnr_range = max(max(max(tsnr_e2)))*.5;
 
 figure('visible', 'off', 'windowstyle','normal');
 subplot(8,5,1:10)
@@ -396,17 +364,54 @@ subplot(8,5,21:30)
 imshow(hor_img,[0 tsnr_range])
 colormap parula
 
-h = colorbar; 
+h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
 histogram(reshape(tsnr_e2, [],1),100);
+xlim([0 tsnr_max_MEDN]);
 
 print([savedir, 'tsnr_2nd_echo'], '-dpng');
 
 base_img.img = tsnr_e2;
 save_nii(base_img, [savedir, 'e2_tsnr.nii']);
+%%
+%Ratio of Denoised vs TSOC TSNR
 
+fprintf('\nCalculating TSNR ratio');
+tsnr_ratio = tsnr_medn./tsnr_tsoc;
+
+[sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
+
+figure('visible', 'off', 'windowstyle','normal');
+subplot(8,5,1:10)
+imshow(sag_img,[0 5])
+title('TSNR Ratio, MEDN vs TSOC timeseries');
+colormap parula
+
+subplot(8,5,11:20)
+imshow(cor_img,[0 5])
+colormap parula
+
+subplot(8,5,21:30)
+imshow(hor_img,[0 5])
+colormap parula
+
+h = colorbar;
+set(h, 'Position', [.08 .35 .03 .55])
+
+subplot(8,5,31:40)
+c = histogram(reshape(tsnr_ratio, [],1),25);
+
+c.BinLimits = [0 6];
+c.NumBins = 30;
+
+print([savedir, 'tsnr_ratio_medn_tsoc'], '-dpng');
+
+base_img.img = tsnr_ratio;
+save_nii(base_img, [savedir, 'tsnr_ratio_medn_tsoc.nii']);
+
+cd ..
 %%
 %TSNR ratio from optimal combo vs single echo
 
@@ -415,7 +420,7 @@ tsnr_ratio = tsnr_tsoc./tsnr_e2;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-figure('visible', 'off', 'windowstyle','normal'); 
+figure('visible', 'off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 5])
 title('TSNR of TSOC vs 2nd Echo');
@@ -429,7 +434,7 @@ subplot(8,5,21:30)
 imshow(hor_img,[0 5])
 colormap parula
 
-h = colorbar; 
+h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
@@ -448,7 +453,7 @@ tsnr_ratio = tsnr_medn./tsnr_e2;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-figure('visible', 'off', 'windowstyle','normal'); 
+figure('visible', 'off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 5])
 title('TSNR of MEDN vs 2nd Echo');
@@ -462,7 +467,7 @@ subplot(8,5,21:30)
 imshow(hor_img,[0 5])
 colormap parula
 
-h = colorbar; 
+h = colorbar;
 set(h, 'Position', [.08 .35 .03 .55])
 
 subplot(8,5,31:40)
@@ -475,4 +480,21 @@ print([savedir, 'tsnr_ratio_medn_vs_e2'], '-dpng');
 base_img.img = tsnr_ratio;
 save_nii(base_img, [savedir, 'tsnr_ratio_medn_vs_e2.nii']);
 
-fprintf('\n');
+%Creating a covariance matrix
+fprintf('\nPlotting correlations');
+figure('visible', 'off', 'windowstyle','normal');
+imagesc(corr_mat, [-1 1]);
+title('Correlation of Motion and ICA comps.');
+colorbar
+colormap parula
+print([savedir, 'Covariance_matrix'], '-dpng');
+
+%%
+%Creating R^2 matrix
+fprintf('\nPlotting correlations...squared');
+figure('visible', 'off', 'windowstyle','normal');
+imagesc((corr_mat.^2), [0 1]);
+title('Correlation Coefficient of Motion and ICA comps.');
+colorbar
+colormap parula
+print([savedir, 'R_Squared_matrix'], '-dpng');
