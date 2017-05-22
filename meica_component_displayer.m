@@ -140,7 +140,6 @@ for i = 1:comp_number;
     rho = imported_ctab(i,3);
     variance_explained = imported_ctab(i,4);
     
-    %plot(timecourses_data(:,i));
     %% Prints the graphs so that the outcome can be seen
     subplot(9,5,1:15)
     
