@@ -12,7 +12,7 @@ cfg.radius = 50;
 
 raw_motion = load(cfg.motionparam); %Load up motion for plotting.
 
-ted_dir = strcat(savedir, '\TED');
+ted_dir = strcat(savedir, '/TED');
 cd(ted_dir);
 
 %Get the ICA component timecourses.
