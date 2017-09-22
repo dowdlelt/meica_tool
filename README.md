@@ -9,6 +9,8 @@ It creates a series of figures that are useful for visualizing the output in a q
 * r2 weighted - pink
 * Ignored - black. 
 
+2017/09/22 update - now more 4ier - enjoy a fft plot. 
+
 Each plot includes brain slices of the component beta values (from TED/betas_OC.nii)
 
 * motion parameters and framewise displacement
@@ -32,6 +34,6 @@ But these few functions will eventually be packaged together and included.
 Example Figures
 ![Kappa vs Rho plot](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/Elbow_Graph_KappaVsRho.png?raw=true)
 ![Kappa vs Rho Scatter](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/KappaVsRho.png?raw=true)
-![Timeseries and brains](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/ex_component_graph.png?raw=true)
+![Timeseries and brains](https://github.com/dowdlelt/meica_tool/blob/master/Component_1_on_ctab_0.png?raw=true)
 
 Thanks to bramila framewise displacement and detrend code (from https://git.becs.aalto.fi/bml/bramila/tree/master) for dvars calculation 
