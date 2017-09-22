@@ -35,5 +35,6 @@ Example Figures
 ![Kappa vs Rho plot](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/Elbow_Graph_KappaVsRho.png?raw=true)
 ![Kappa vs Rho Scatter](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/KappaVsRho.png?raw=true)
 ![Timeseries and brains](https://github.com/dowdlelt/meica_tool/blob/master/Component_1_on_ctab_0.png?raw=true)
+![Noise even!](https://github.com/dowdlelt/meica_tool/blob/master/Component_49_on_ctab_48.png?raw=true)
 
 Thanks to bramila framewise displacement and detrend code (from https://git.becs.aalto.fi/bml/bramila/tree/master) for dvars calculation 
