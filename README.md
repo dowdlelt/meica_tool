@@ -23,13 +23,20 @@ It then creates a bar plot showing the relative variance of each of those catego
 
 Its (still) ugly code, but effective...for now. 
 
-###Current dependencies include:
+### Current dependencies include:
 
 
 * [spm, for file loading, for now](http://www.fil.ion.ucl.ac.uk/spm/)
 * [load_nii, from Nifti Tools](https://www.mathworks.com/matlabcentral/fileexchange/8797-tools-for-nifti-and-analyze-image)
 
 But these few functions will eventually be packaged together and included. 
+
+### Usage
+
+* Add to matlab path
+* run meica\_component\_displayer(tr), where tr is the repitition of your EPI timeseries in seconds.
+* select the meica.py output folder, ex. meica\_nback\_e1.label
+* wait a bit
 
 Example Figures
 ![Kappa vs Rho plot](https://github.com/dowdlelt/meica_tool/blob/master/example_figures/Elbow_Graph_KappaVsRho.png?raw=true)
