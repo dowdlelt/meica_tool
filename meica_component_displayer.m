@@ -1,6 +1,6 @@
-function meica_component_displayer()
+function meica_component_displayer(tr)
 savedir = spm_select(1,'dir','Select the MEICA output folder...');
-%This is the MEICA output folder
+%Make sure to call it with a tr now.
 %and the figures will be saved in new folder here.
 
 cd(savedir);
@@ -10,7 +10,14 @@ cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw 
 cfg.prepro_suite = 'meica';
 cfg.radius = 50;
 
-raw_motion = load(cfg.motionparam); %Load up motion for plotting.
+Motion = 1;
+
+try raw_motion = load(cfg.motionparam); %Load up motion for plotting.
+catch no_motion
+    fprintf('no motion file found, ignoring motionrelated plots\n');
+    Motion = 0;
+end
+
 
 ted_dir = strcat(savedir, '/TED');
 cd(ted_dir);
@@ -19,10 +26,12 @@ cd(ted_dir);
 timecourses_data = load('meica_mix.1D');
 ctab = 'comp_table.txt';
 
+if Motion
 %Create a combination of motion estimates and ICA comps.
 total_timecourses = horzcat(raw_motion, timecourses_data);
 %Use this to create a correlation matrix
 corr_mat = corr(total_timecourses);
+end
 
 fid = fopen(ctab); %Open the comp table that is within the TED folder.
 tline = fgetl(fid);
@@ -31,11 +40,11 @@ imported_ctab = [];
 while ischar(tline)
     %disp(tline)
     num_check = str2num(tline(1)); %Is the first character a number
-    
+
     if isempty(num_check) %Want to make sure it is not []
         num_check = 'not a number'; %not a number ignore it
     end
-    
+
     if strfind(tline, '#ACC')
         accp_list = tline;
     elseif strfind(tline, '#REJ')
@@ -79,7 +88,7 @@ all_betas = load_nii('betas_OC.nii');
 all_betas = all_betas.img;
 
 cd(savedir); %Go back out into the main directory.
-
+if Motion
 %%Making the motion plots, including framewise displacement
 
 figure('visible', 'off', 'windowstyle', 'normal');
@@ -104,7 +113,7 @@ title('rotation'); grid on;
 
 subplot(3,1,3); plot(fwd); title('Framewise Displacement'); axis([0 x_axis 0 3]);
 grid on;
-
+end
 mkdir('component_plots');
 savedir = [savedir, '/component_plots/'];
 
@@ -126,23 +135,24 @@ figure('visible', 'off', 'windowstyle','normal');
 
 
 for i = 1:comp_number;
-    
+
     if mod(count, 10) == 0
         fprintf('.'); %print progress every 10 components, less annoying.
     end
     count = count +1;
-    
+
     upper = max(max(max(all_betas(:,:,:,i))));
     lower = min(min(min(all_betas(:,:,:,i))));
     bounds = (0.3 * max([abs(upper), abs(lower)]));
-    
+
     kappa = imported_ctab(i,2);
     rho = imported_ctab(i,3);
     variance_explained = imported_ctab(i,4);
-    
+
     %% Prints the graphs so that the outcome can be seen
-    subplot(9,5,1:15)
-    
+    subplot(12,5,1:15)
+    length_of_time = size(timecourses_data(:,i),1);
+
     if any(accps == (i-1))
         plot(timecourses_data(:,i), 'Color',[0 .5 0]); %Green for BOLD like
         color_table(i,:) = [0 1 0];
@@ -157,27 +167,44 @@ for i = 1:comp_number;
         color_table(i,:) = [0 0 0];
     end
     %%
-    
+
     axis([0 x_axis min(timecourses_data(:,i)) max(timecourses_data(:,i))]);
     title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
     label = strcat('Component_', num2str(i), '_on_ctab_', num2str(i-1));
-    
+
     current_image = squeeze(all_betas(:,:,:,i));
-    
+
     [sag_img, cor_img, hor_img] = three_cut_maker(current_image,num_cuts);
-    
-    subplot(9,5,16:25)
+
+    subplot(12,5,16:25)
     imshow(sag_img,[-bounds bounds])
     colormap bone
-    
-    subplot(9,5,26:35)
+
+    subplot(12,5,26:35)
     imshow(cor_img,[-bounds bounds])
     colormap bone
-    
-    subplot(9,5,36:45)
+
+    subplot(12,5,36:45)
     imshow(hor_img,[-bounds bounds])
     colormap bone
-    
+
+    %Now adding in the fourier transform.
+    Fs = tr;            % Sampling frequency
+    T = 1/Fs;             % Sampling period
+    L = (length_of_time*tr);             % Length of signal
+
+    Y = fft(timecourses_data(:,i));
+    P2 = abs(Y/L);
+    P1 = P2(1:floor(L/2+1));
+    P1(2:end-1) = 2*P1(2:end-1);
+
+    f = Fs*(0:(L/2))/L;
+    subplot(12,5,52:60)
+    plot(f,P1)
+    title('Single-Sided Amplitude Spectrum of X(t)')
+    xlabel('f (Hz)')
+    ylabel('|P1(f)|')
+
     print([savedir, label], '-dpng');
 end
 %%
@@ -490,7 +517,7 @@ print([savedir, 'Covariance_matrix'], '-dpng');
 
 %%
 %Creating R^2 matrix
-fprintf('\nPlotting correlations...squared');
+fprintf('\nPlotting correlations...squared\n');
 figure('visible', 'off', 'windowstyle','normal');
 imagesc((corr_mat.^2), [0 1]);
 title('Correlation Coefficient of Motion and ICA comps.');
