@@ -14,7 +14,7 @@ Motion = 1;
 
 try raw_motion = load(cfg.motionparam); %Load up motion for plotting.
 catch no_motion
-    fprintf('no motion file found, ignoring motionrelated plots\n');
+    fprintf('no motion file found, ignoring motion related plots\n');
     Motion = 0;
 end
 
@@ -40,11 +40,11 @@ imported_ctab = [];
 while ischar(tline)
     %disp(tline)
     num_check = str2num(tline(1)); %Is the first character a number
-    
+
     if isempty(num_check) %Want to make sure it is not []
         num_check = 'not a number'; %not a number ignore it
     end
-    
+
     if strfind(tline, '#ACC')
         accp_list = tline;
     elseif strfind(tline, '#REJ')
@@ -135,24 +135,24 @@ figure('visible', 'off', 'windowstyle','normal');
 
 
 for i = 1:comp_number;
-    
+
     if mod(count, 10) == 0
         fprintf('.'); %print progress every 10 components, less annoying.
     end
     count = count +1;
-    
+
     upper = max(max(max(all_betas(:,:,:,i))));
     lower = min(min(min(all_betas(:,:,:,i))));
     bounds = (0.3 * max([abs(upper), abs(lower)]));
-    
+
     kappa = imported_ctab(i,2);
     rho = imported_ctab(i,3);
     variance_explained = imported_ctab(i,4);
-    
+
     %% Prints the graphs so that the outcome can be seen
     subplot(12,5,1:15)
     length_of_time = size(timecourses_data(:,i),1);
-    
+
     if any(accps == (i-1))
         plot(timecourses_data(:,i), 'Color',[0 .5 0]); %Green for BOLD like
         color_table(i,:) = [0 1 0];
@@ -167,27 +167,27 @@ for i = 1:comp_number;
         color_table(i,:) = [0 0 0];
     end
     %%
-    
+
     axis([0 x_axis min(timecourses_data(:,i)) max(timecourses_data(:,i))]);
     title(strcat('Component:', num2str(i), ', on ctab: ', num2str(i-1), ', kappa: ', num2str(kappa,3), ', rho: ', num2str(rho,3), ', variance: ', num2str(variance_explained,4))); grid on;
     label = strcat('Component_', num2str(i), '_on_ctab_', num2str(i-1));
-    
+
     current_image = squeeze(all_betas(:,:,:,i));
-    
+
     [sag_img, cor_img, hor_img] = three_cut_maker(current_image,num_cuts);
-    
+
     subplot(12,5,16:25)
     imshow(sag_img,[-bounds bounds])
     colormap bone
-    
+
     subplot(12,5,26:35)
     imshow(cor_img,[-bounds bounds])
     colormap bone
-    
+
     subplot(12,5,36:45)
     imshow(hor_img,[-bounds bounds])
     colormap bone
-    
+
     %Now adding in the fourier transform.
     Fs = tr;            % Sampling frequency
     T = 1/Fs;             % Sampling period
@@ -197,14 +197,14 @@ for i = 1:comp_number;
     P2 = abs(Y/L);
     P1 = P2(1:L/2+1);
     P1(2:end-1) = 2*P1(2:end-1);
-    
+
     f = Fs*(0:(L/2))/L;
     subplot(12,5,52:60)
     plot(f,P1)
     title('Single-Sided Amplitude Spectrum of X(t)')
     xlabel('f (Hz)')
     ylabel('|P1(f)|')
-    
+
     print([savedir, label], '-dpng');
 end
 %%
