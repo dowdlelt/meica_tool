@@ -189,9 +189,9 @@ for i = 1:comp_number;
     colormap bone
 
     %Now adding in the fourier transform.
-    Fs = tr;            % Sampling frequency
+    Fs = 1/tr;            % Sampling frequency
     T = 1/Fs;             % Sampling period
-    L = (length_of_time*tr);             % Length of signal
+    L = (length_of_time*T);             % Length of signal
 
     Y = fft(timecourses_data(:,i));
     P2 = abs(Y/L);
