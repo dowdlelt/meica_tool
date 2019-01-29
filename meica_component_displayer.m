@@ -1,7 +1,9 @@
 function meica_component_displayer(tr, savedir)
 
+% tr is the repititon time of the data.
+% savedir is the TED output folder that contains everything tedana produced
 if exist('savedir','var')
-    
+
 else
     savedir = spm_select(1,'dir','Select the MEICA output folder...');
 end
@@ -9,7 +11,13 @@ end
 %and the figures will be saved in new folder here.
 
 cd(savedir);
-copyfile ../../dfile.r01.1D ./
+try copyfile ../../dfile.r01.1D ./;
+catch
+    fprintf('dfile not found')
+
+end
+
+
 %Prepare motion calc and loading.
 cfg.motionparam = 'dfile.r01.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
 cfg.prepro_suite = 'meica';
@@ -90,7 +98,7 @@ igns = str2num(ign_list);
 
 cd(ted_dir); %Go into the output directory
 
-try 
+try
     all_betas = load_nii('betas_OC.nii.gz');
 catch
     warning('uncompressed niis')
