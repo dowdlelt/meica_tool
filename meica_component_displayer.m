@@ -1,12 +1,17 @@
-function meica_component_displayer(tr)
-savedir = spm_select(1,'dir','Select the MEICA output folder...');
+function meica_component_displayer(tr, savedir)
+
+if exist('savedir','var')
+    
+else
+    savedir = spm_select(1,'dir','Select the MEICA output folder...');
+end
 %Make sure to call it with a tr now.
 %and the figures will be saved in new folder here.
 
 cd(savedir);
-
+copyfile ../../dfile.r01.1D ./
 %Prepare motion calc and loading.
-cfg.motionparam = 'motion.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
+cfg.motionparam = 'dfile.r01.1D'; %output from MEICA, organized as: roll pitch yaw dS  dL  dP
 cfg.prepro_suite = 'meica';
 cfg.radius = 50;
 
@@ -19,12 +24,14 @@ catch no_motion
 end
 
 
-ted_dir = strcat(savedir, '/TED');
+% ted_dir = strcat(savedir, '/TED.r01');
+ted_dir = savedir;
 cd(ted_dir);
 
 %Get the ICA component timecourses.
 timecourses_data = load('meica_mix.1D');
 ctab = 'comp_table.txt';
+
 
 if Motion
 %Create a combination of motion estimates and ICA comps.
@@ -83,7 +90,12 @@ igns = str2num(ign_list);
 
 cd(ted_dir); %Go into the output directory
 
-all_betas = load_nii('betas_OC.nii');
+try 
+    all_betas = load_nii('betas_OC.nii.gz');
+catch
+    warning('uncompressed niis')
+    all_betas = load_nii('betas_OC.nii');
+end
 
 all_betas = all_betas.img;
 
@@ -292,7 +304,11 @@ print([savedir, 'KappaVsRho'], '-dpng');
 
 cd(ted_dir);
 
-base_img = load_nii('t2sv.nii');
+try
+    base_img = load_nii('t2sv.nii.gz');
+catch
+    base_img = load_nii('t2sv.nii');
+end
 %This is a one frame nifti that we can use to make nifti versions
 % of all the TSNR figures.
 
@@ -300,7 +316,11 @@ fprintf('\nCalculating TSNR figures...');
 
 %%
 %Calculated TSNR denoised Timeseries
-tsnr_medn = tsnr_creator('dn_ts_OC.nii');
+try
+    tsnr_medn = tsnr_creator('dn_ts_OC.nii.gz');
+catch
+    tsnr_medn = tsnr_creator('dn_ts_OC.nii');
+end
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_medn,num_cuts);
 
@@ -336,7 +356,21 @@ save_nii(base_img, [savedir, 'medn_tsnr.nii']);
 
 %%
 %Calculate TSNR of TSOC
-tsnr_tsoc = tsnr_creator('ts_OC.nii');
+if size(dir('tsoc_orig.nii*'),1) >= 1 %older tedana versions
+    try
+        tsnr_tsoc = tsnr_creator('tsoc_orig.nii.gz');
+    catch
+        tsnr_tsoc = tsnr_creator('tsoc_orig.nii');
+    end
+elseif size(dir('ts_OC.nii*'),1) >= 1 %newer tedana versions
+    try
+        tsnr_tsoc = tsnr_creator('ts_OC.nii.gz');
+    catch
+        tsnr_tsoc = tsnr_creator('ts_OC.nii');
+    end
+else
+    disp('Optimally combined file not found');
+end
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_tsoc,num_cuts);
 
