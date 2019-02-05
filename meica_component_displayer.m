@@ -116,7 +116,7 @@ cd(savedir); %Go back out into the main directory.
 if Motion
 %%Making the motion plots, including framewise displacement
 
-figure('visible', 'on', 'windowstyle', 'normal');
+figure('visible','off', 'windowstyle', 'normal');
 grid on; grid minor;
 [fwd,~]=bramila_framewiseDisplacement(cfg); %calculate FD using script
 
@@ -156,7 +156,7 @@ color_table = zeros(comp_number,3);
 fprintf('Making component plots.\n');
 count = 0; %for displaying things every so often
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 
 n_colors = 256;
 colormaptype = 'parula';
@@ -240,7 +240,7 @@ end
 %%
 fprintf('\nCollecting Explained Variance...');
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 
 BOLD_var = 0;
 REJ_var = 0;
@@ -292,7 +292,7 @@ print([savedir, 'Var_exp'], '-dpng');
 %%
 fprintf('\nShowing Elbow of Kappa, with Rho...');
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 plot(imported_ctab(:,2))
 hold on
 plot(imported_ctab(:,3))
@@ -306,7 +306,7 @@ print([savedir, 'Elbow_Graph_KappaVsRho'], '-dpng');
 fprintf('\nScattering Kappa vs Rho ');
 
 k_r = horzcat(imported_ctab(:,2),imported_ctab(:,3));
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 scatter(k_r(:,1),k_r(:,2), imported_ctab(:,4)*100, color_table);
 title('Kappa vs Rho');
 ylabel('Rho');
@@ -346,7 +346,7 @@ tsnr_max_MEDN = max(max(max(tsnr_medn)));
 
 tsnr_range = tsnr_max_MEDN*0.8;
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 tsnr_range])
 title('TSNR of MEDN timeseries');
@@ -392,7 +392,7 @@ end
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_tsoc,num_cuts);
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 tsnr_range])
 
@@ -428,7 +428,7 @@ tsnr_e2 = tsnr_creator('e2_in.nii.gz');
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_e2,num_cuts);
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 tsnr_range])
 title('TSNR of Second Echo');
@@ -461,7 +461,7 @@ tsnr_ratio = tsnr_medn./tsnr_tsoc;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 5])
 title('TSNR Ratio, MEDN vs TSOC timeseries');
@@ -498,7 +498,7 @@ tsnr_ratio = tsnr_tsoc./tsnr_e2;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 5])
 title('TSNR of TSOC vs 2nd Echo');
@@ -531,7 +531,7 @@ tsnr_ratio = tsnr_medn./tsnr_e2;
 
 [sag_img, cor_img, hor_img] = three_cut_maker(tsnr_ratio,num_cuts);
 
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 subplot(8,5,1:10)
 imshow(sag_img,[0 5])
 title('TSNR of MEDN vs 2nd Echo');
@@ -560,7 +560,7 @@ save_nii(base_img, [savedir, 'tsnr_ratio_medn_vs_e2.nii']);
 
 %Creating a covariance matrix
 fprintf('\nPlotting correlations');
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 imagesc(corr_mat, [-1 1]);
 title('Correlation of Motion and ICA comps.');
 colorbar
@@ -570,7 +570,7 @@ print([savedir, 'Covariance_matrix'], '-dpng');
 %%
 %Creating R^2 matrix
 fprintf('\nPlotting correlations...squared\n');
-figure('visible', 'on', 'windowstyle','normal');
+figure('visible','off', 'windowstyle','normal');
 imagesc((corr_mat.^2), [0 1]);
 title('Correlation Coefficient of Motion and ICA comps.');
 colorbar
