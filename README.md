@@ -1,3 +1,7 @@
+### These images are now produced in `tedana`, which can be found here: https://github.com/ME-ICA/tedana
+
+This "toolbox" is no longer maintained, updated and may not even work anymore. The figures are produced by default in the much improved multi-echo denoising package `tedana`.
+
 ### meica_tool
 
 I've created a handy matlab script that works with meica.py (https://bitbucket.org/prantikk/me-ica) v3 - from the experimental branch. 
